@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Royal Admin — Omniscient Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Space+Grotesk:wght@700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css">
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #030303; color: #fff; font-family: 'Outfit', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar */
+        .admin-sidebar { width: 280px; min-width: 280px; height: 100vh; background: rgba(5,5,10,0.95); border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; padding: 30px 20px; gap: 4px; overflow-y: auto; }
+        .sidebar-logo { font-family: 'Space Grotesk', sans-serif; font-size: 22px; color: #fff; margin-bottom: 30px; padding: 0 10px; }
+        .sidebar-section { font-size: 10px; font-weight: 800; color: #333; text-transform: uppercase; letter-spacing: 2px; padding: 15px 10px 8px; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; color: #888; transition: all 0.2s; border: 1px solid transparent; }
+        .nav-item:hover { background: rgba(255,255,255,0.04); color: #ccc; }
+        .nav-item.active { background: rgba(88,166,255,0.1); color: #58a6ff; border-color: rgba(88,166,255,0.2); }
+        .nav-icon { width: 18px; height: 18px; opacity: 0.7; }
+
+        /* Content */
+        .admin-content { flex: 1; overflow-y: auto; padding: 50px 60px; background: radial-gradient(ellipse at 80% 0%, rgba(88,166,255,0.03) 0%, transparent 60%); }
+        .page-header { margin-bottom: 40px; }
+        .page-title { font-family: 'Space Grotesk', sans-serif; font-size: 40px; font-weight: 700; background: linear-gradient(to right, #fff 60%, #444); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; line-height: 1.1; }
+        .page-sub { color: #555; font-size: 15px; font-weight: 600; margin-top: 6px; }
+
+        .hide-desktop { display: none !important; }
+
+        @media (max-width: 1024px) {
+            .admin-sidebar { 
+                position: fixed; 
+                left: -300px; 
+                z-index: 1000; 
+                transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+                box-shadow: 20px 0 50px rgba(0,0,0,0.8);
+            }
+            .admin-sidebar.active { left: 0; }
+            .admin-content { padding: 80px 20px 40px; }
+            .page-title { font-size: 28px; }
+            .stat-grid { grid-template-columns: 1fr 1fr; }
+            .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .hide-desktop { display: flex !important; }
+        }
+
+        @media (max-width: 600px) {
+            .stat-grid { grid-template-columns: 1fr; }
+            .page-title { font-size: 24px; }
+            .glass-card { padding: 20px !important; }
+            .section-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .inp { width: 100% !important; }
+        }
+        
+        /* Cards */
+        .glass-card { background: rgba(10,10,15,0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 18px; backdrop-filter: blur(20px); transition: border-color 0.3s; }
+        .glass-card:hover { border-color: rgba(255,255,255,0.1); }
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .stat-card { padding: 28px; display: flex; flex-direction: column; gap: 8px; }
+        .stat-num { font-family: 'Space Grotesk', sans-serif; font-size: 44px; font-weight: 700; line-height: 1; }
+        .stat-label { font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase; letter-spacing: 2px; }
+        
+        /* Tab system */
+        .tab-bar { display: flex; gap: 5px; margin-bottom: 30px; padding: 5px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); width: fit-content; }
+        .tab { padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; color: #555; transition: all 0.2s; }
+        .tab.active { background: rgba(88,166,255,0.15); color: #58a6ff; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Table */
+        .table-wrap { border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: rgba(255,255,255,0.02); }
+        th { padding: 16px 24px; text-align: left; font-size: 10px; font-weight: 800; color: #444; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        td { padding: 16px 24px; font-size: 13px; font-weight: 600; color: #ccc; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        /* Badges */
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 1px; border: 1px solid transparent; }
+        .badge-admin { background: rgba(88,166,255,0.1); color: #58a6ff; border-color: rgba(88,166,255,0.3); }
+        .badge-user  { background: rgba(255,255,255,0.04); color: #666; border-color: rgba(255,255,255,0.08); }
+        .badge-online { background: rgba(57,255,20,0.1); color: #39FF14; border-color: rgba(57,255,20,0.3); }
+        .badge-offline { background: rgba(255,255,255,0.04); color: #555; border-color: rgba(255,255,255,0.08); }
+
+        /* Inputs */
+        .inp { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 16px; color: #fff; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; outline: none; transition: border-color 0.2s; }
+        .inp:focus { border-color: rgba(88,166,255,0.4); }
+        .inp::placeholder { color: #444; }
+
+        /* Buttons */
+        .btn-blue  { background: #58a6ff; color: #000; font-weight: 800; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .btn-blue:hover { background: #fff; }
+        .btn-red   { background: rgba(255,68,68,0.1); color: #ff4444; font-weight: 800; border: 1px solid rgba(255,68,68,0.3); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 11px; transition: all 0.2s; }
+        .btn-red:hover { background: rgba(255,68,68,0.2); }
+        .btn-green { background: rgba(57,255,20,0.1); color: #39FF14; font-weight: 800; border: 1px solid rgba(57,255,20,0.3); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 11px; transition: all 0.2s; }
+        .btn-green:hover { background: rgba(57,255,20,0.2); }
+        .btn-ghost-sm { background: transparent; color: #888; font-weight: 700; border: 1px solid rgba(255,255,255,0.08); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 11px; transition: all 0.2s; }
+        .btn-ghost-sm:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
+
+        /* Progress bar */
+        .prog-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+        .prog-fill { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(0.16,1,0.3,1); }
+
+        /* Modal */
+        .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-bg.open { display: flex; }
+        .modal { background: #0a0a10; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 40px; width: 480px; max-width: 95vw; }
+        .modal h3 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; margin-bottom: 25px; }
+
+        /* Toast */
+        #toast { position: fixed; bottom: 30px; right: 30px; background: #0a0a10; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px 24px; font-size: 14px; font-weight: 700; z-index: 9999; transform: translateY(100px); opacity:0; transition: all 0.4s; }
+        #toast.show { transform: translateY(0); opacity:1; }
+        #toast.success { border-color: rgba(57,255,20,0.4); color: #39FF14; }
+        #toast.error { border-color: rgba(255,68,68,0.4); color: #ff4444; }
+
+        /* Mono font for codes */
+        .mono { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 1px; }
+
+        .section-header { display: flex; justify-content: space-between; align-items: center; padding: 24px 30px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .section-title { font-size: 18px; font-weight: 800; }
+        .section-sub { font-size: 12px; color: #555; font-weight: 600; margin-top: 3px; }
+
+        .dot-live { width: 7px; height: 7px; border-radius: 50%; background: #39FF14; box-shadow: 0 0 8px #39FF14; display: inline-block; }
+        .dot-dead { width: 7px; height: 7px; border-radius: 50%; background: #333; display: inline-block; }
+    </style>
+</head>
+    <button class="hide-desktop btn-blue" onclick="toggleAdminSidebar()" style="position:fixed; top:20px; left:20px; z-index:1100; padding:10px; border-radius:10px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 20px rgba(0,0,0,0.5);">☰</button>
+
+    <!-- SIDEBAR -->
+    <div class="admin-sidebar" id="admin-sidebar">
+        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:20px;">
+            <div class="sidebar-logo" style="margin:0;">ROYAL<span style="color:#58a6ff;">OV</span></div>
+            <button class="hide-desktop btn-ghost-sm" onclick="toggleAdminSidebar()" style="padding:6px 10px;">✕</button>
+        </div>
+
+        <div class="sidebar-section">Navigation</div>
+        <div class="nav-item active" id="nav-overview" onclick="showPage('overview', this)">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Overview
+        </div>
+        <div class="nav-item" id="nav-users" onclick="showPage('users', this)">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Client Management
+        </div>
+        <div class="nav-item" id="nav-bots" onclick="showPage('bots', this)">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            All Clusters
+        </div>
+        <div class="nav-item" id="nav-promos" onclick="showPage('promos', this)">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            Promo Engine
+        </div>
+        <div class="nav-item" id="nav-credits" onclick="showPage('credits', this)">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Credit Ledger
+        </div>
+
+        <div style="flex:1;"></div>
+
+        <div style="padding:16px; background:rgba(255,68,68,0.05); border-radius:12px; border:1px solid rgba(255,68,68,0.1); margin-top: 20px;">
+            <div style="font-size:10px; font-weight:800; color:#555; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">Danger Zone</div>
+            <button class="btn-red" style="width:100%; margin-bottom:8px;" onclick="purgeInactive()">Purge Stopped Clusters</button>
+            <button class="btn-ghost-sm" style="width:100%;" onclick="location.href='/dashboard.html'">← Return to Home</button>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="admin-content">
+
+        <!-- OVERVIEW PAGE -->
+        <div id="page-overview" class="tab-panel active">
+            <div class="page-header">
+                <div class="page-title">Omniscient Dashboard</div>
+                <div class="page-sub">Real-time infrastructure intelligence — <span id="last-refresh">Loading...</span></div>
+            </div>
+
+            <div class="stat-grid">
+                <div class="glass-card stat-card">
+                    <div class="stat-num" id="ov-users">—</div>
+                    <div class="stat-label">Total Clients</div>
+                </div>
+                <div class="glass-card stat-card">
+                    <div class="stat-num" style="color:#39FF14; text-shadow:0 0 20px rgba(57,255,20,0.3);" id="ov-running">—</div>
+                    <div class="stat-label">Engines Live</div>
+                </div>
+                <div class="glass-card stat-card">
+                    <div class="stat-num" id="ov-bots">—</div>
+                    <div class="stat-label">Total Clusters</div>
+                </div>
+                <div class="glass-card stat-card">
+                    <div class="stat-num" style="color:#ff4444;" id="ov-ram">—</div>
+                    <div class="stat-label">RAM Used (MB)</div>
+                    <div class="prog-bar" style="margin-top:10px;"><div class="prog-fill" id="ram-fill" style="background:#ff4444;"></div></div>
+                    <div style="font-size:11px; color:#444; margin-top:6px;" id="ram-detail">— / — MB</div>
+                </div>
+            </div>
+
+            <!-- Credit Rate Card -->
+            <div class="glass-card" style="padding:30px; margin-bottom:30px; display:flex; gap:40px; align-items:center;">
+                <div>
+                    <div style="font-size:12px; font-weight:800; color:#555; text-transform:uppercase; letter-spacing:2px; margin-bottom:8px;">Credit Economy</div>
+                    <div style="font-size:28px; font-weight:800; font-family:'Space Grotesk', sans-serif;">238 MB <span style="color:#58a6ff;">=</span> 30 Credits</div>
+                    <div style="font-size:13px; color:#555; margin-top:5px; font-weight:600;">0.126 credits per MB — enterprise tier pricing</div>
+                </div>
+                <div style="flex:1; display:flex; gap:20px; justify-content:flex-end;">
+                    <div style="text-align:center;">
+                        <div style="font-size:24px; font-weight:800; color:#ff4444; font-family:'Space Grotesk', sans-serif;" id="ov-promos">—</div>
+                        <div style="font-size:11px; color:#555; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-top:4px;">Promo Codes</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:24px; font-weight:800; color:#ffbe0b; font-family:'Space Grotesk', sans-serif;" id="ov-totalcredits">—</div>
+                        <div style="font-size:11px; color:#555; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-top:4px;">Credits Issued</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Users Quick View -->
+            <div class="glass-card" style="padding:0;">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">Recent Registrations</div>
+                        <div class="section-sub">Last 5 clients to join the platform</div>
+                    </div>
+                    <button class="btn-blue" onclick="showPage('users')">View All</button>
+                </div>
+                <div class="table-wrap" style="border:none; border-radius:0 0 18px 18px;">
+                    <table><thead><tr><th>Client</th><th>Email</th><th>Credits</th><th>Clusters</th><th>Status</th></tr></thead>
+                    <tbody id="ov-recent-users"></tbody></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- USERS PAGE -->
+        <div id="page-users" class="tab-panel">
+            <div class="page-header">
+                <div class="page-title">Client Management</div>
+                <div class="page-sub">Full control over all registered users — credit gifting, role management, termination</div>
+            </div>
+            <div class="glass-card" style="padding:0;">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">All Clients</div>
+                        <div class="section-sub" id="user-count-label">— clients registered</div>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <input class="inp" id="user-search" placeholder="Search by name or email..." style="width:260px;" oninput="filterUsers()">
+                        <button class="btn-blue" onclick="loadStats()">Refresh</button>
+                    </div>
+                </div>
+                <div class="table-wrap" style="border:none; border-radius:0 0 18px 18px; overflow-x:auto;">
+                    <table><thead><tr><th>ID</th><th>Client</th><th>Email</th><th>Role</th><th>Credits</th><th>Clusters</th><th>Actions</th></tr></thead>
+                    <tbody id="user-list"></tbody></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTS / CLUSTERS PAGE -->
+        <div id="page-bots" class="tab-panel">
+            <div class="page-header">
+                <div class="page-title">All Clusters</div>
+                <div class="page-sub">Live view of every cluster on the infrastructure</div>
+            </div>
+            <div class="glass-card" style="padding:0;">
+                <div class="section-header">
+                    <div class="section-title">Cluster Registry</div>
+                    <button class="btn-blue" onclick="loadStats()">Refresh Intel</button>
+                </div>
+                <div class="table-wrap" style="border:none; border-radius:0 0 18px 18px; overflow-x:auto;">
+                    <table><thead><tr><th>ID</th><th>Name</th><th>Owner</th><th>Language</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="bot-list"></tbody></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROMOS PAGE -->
+        <div id="page-promos" class="tab-panel">
+            <div class="page-header">
+                <div class="page-title">Promo Engine</div>
+                <div class="page-sub">Create and manage promotional credit codes</div>
+            </div>
+
+            <!-- Create Code Form -->
+            <div class="glass-card" style="padding:30px; margin-bottom:30px;">
+                <div style="font-size:15px; font-weight:800; margin-bottom:20px;">Generate New Promo Code</div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <label style="font-size:11px; font-weight:800; color:#555; text-transform:uppercase; letter-spacing:1px;">Code Identifier</label>
+                        <input class="inp mono" id="promo-code-input" placeholder="ROYAL-XXXX-2024" style="width:220px; text-transform:uppercase;">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <label style="font-size:11px; font-weight:800; color:#555; text-transform:uppercase; letter-spacing:1px;">Credits Value</label>
+                        <input class="inp" id="promo-credits-input" type="number" placeholder="100" style="width:120px;">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <label style="font-size:11px; font-weight:800; color:#555; text-transform:uppercase; letter-spacing:1px;">Max Uses</label>
+                        <input class="inp" id="promo-uses-input" type="number" placeholder="1" style="width:100px;">
+                    </div>
+                    <button class="btn-blue" style="padding:12px 30px;" onclick="createPromo()">Generate Code</button>
+                </div>
+            </div>
+
+            <div class="glass-card" style="padding:0;">
+                <div class="section-header">
+                    <div class="section-title">Active Codes</div>
+                </div>
+                <div class="table-wrap" style="border:none; border-radius:0 0 18px 18px; overflow-x:auto;">
+                    <table><thead><tr><th>Code</th><th>Credits</th><th>Uses</th><th>Max Uses</th><th>Created</th><th>Action</th></tr></thead>
+                    <tbody id="promo-list"></tbody></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- CREDITS PAGE -->
+        <div id="page-credits" class="tab-panel">
+            <div class="page-header">
+                <div class="page-title">Credit Ledger</div>
+                <div class="page-sub">Gift, audit, and manage credit balances across all clients</div>
+            </div>
+
+            <div class="glass-card" style="padding:30px; margin-bottom:30px;">
+                <div style="font-size:15px; font-weight:800; margin-bottom:6px;">Credit Rate Calculator</div>
+                <div style="font-size:13px; color:#555; margin-bottom:20px;">See exactly how much a deployment costs in credits</div>
+                <div style="display:flex; gap:12px; align-items:flex-end;">
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <label style="font-size:11px; font-weight:800; color:#555; text-transform:uppercase; letter-spacing:1px;">RAM (MB)</label>
+                        <input class="inp" id="calc-ram" type="number" placeholder="238" style="width:140px;" oninput="calcCost()">
+                    </div>
+                    <div style="padding:12px 20px; background:rgba(88,166,255,0.08); border:1px solid rgba(88,166,255,0.2); border-radius:10px; font-size:18px; font-weight:800; font-family:'Space Grotesk', sans-serif;" id="calc-result">30 Credits</div>
+                </div>
+            </div>
+
+            <div class="glass-card" style="padding:0;">
+                <div class="section-header">
+                    <div>
+                        <div class="section-title">Client Credit Balances</div>
+                        <div class="section-sub">Gift or adjust credits directly</div>
+                    </div>
+                </div>
+                <div class="table-wrap" style="border:none; border-radius:0 0 18px 18px; overflow-x:auto;">
+                    <table><thead><tr><th>Client</th><th>Email</th><th>Current Credits</th><th>Gift Credits</th></tr></thead>
+                    <tbody id="credits-list"></tbody></table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Gift Credits Modal -->
+    <div class="modal-bg" id="gift-modal">
+        <div class="modal">
+            <h3>Gift Credits</h3>
+            <div style="margin-bottom:20px;">
+                <div style="font-size:13px; color:#888; margin-bottom:6px;">Gifting to: <strong id="gift-user-name" style="color:#fff;">—</strong></div>
+                <div style="font-size:12px; color:#555;">Current balance: <span id="gift-user-credits" style="color:#58a6ff;">—</span> credits</div>
+            </div>
+            <input class="inp" id="gift-amount" type="number" placeholder="Amount to gift (e.g. 100)" style="width:100%; margin-bottom:16px;">
+            <div style="display:flex; gap:10px;">
+                <button class="btn-blue" style="flex:1;" onclick="submitGift()">Confirm Gift</button>
+                <button class="btn-ghost-sm" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Bots Modal -->
+    <div class="modal-bg" id="bots-modal">
+        <div class="modal" style="width:600px; max-width:95vw;">
+            <h3 id="bots-modal-title">Client Clusters</h3>
+            <div id="bots-modal-body" style="max-height:400px; overflow-y:auto;">
+                <div style="color:#555; font-size:14px;">Loading...</div>
+            </div>
+            <div style="margin-top:20px;">
+                <button class="btn-ghost-sm" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+
+    <script>
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        if (!user || (user.role !== 'admin' && user.email !== 'naimkrymadh11111i@gmail.com')) {
+            window.location.href = '/dashboard.html';
+        }
+        const HEADERS = { 'Content-Type': 'application/json', 'admin-id': String(user.id) };
+
+        let allUsers = [], allBots = [], allPromos = [];
+        let giftTargetId = null;
+
+        function toast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `show ${type}`;
+            setTimeout(() => { t.className = ''; }, 3000);
+        }
+
+        function showPage(name, el) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + name).classList.add('active');
+            if (el) el.classList.add('active');
+            else document.getElementById('nav-' + name)?.classList.add('active');
+            if (window.innerWidth <= 1024) toggleAdminSidebar(false);
+        }
+
+        function toggleAdminSidebar(force = null) {
+            const sb = document.getElementById('admin-sidebar');
+            if (force === true) sb.classList.add('active');
+            else if (force === false) sb.classList.remove('active');
+            else sb.classList.toggle('active');
+        }
+
+        function closeModal() {
+            document.querySelectorAll('.modal-bg').forEach(m => m.classList.remove('open'));
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/admin/stats', { headers: HEADERS });
+                const data = await res.json();
+                if (!res.ok) {
+                    document.querySelector('.page-title').textContent = 'Access Denied';
+                    document.querySelector('.page-sub').textContent = `Error: ${data.error} — Make sure you are logged in as the admin account (naimkrymadh11111i@gmail.com). Your current user ID is ${user?.id}.`;
+                    toast(data.error || 'Access denied', 'error');
+                    return;
+                }
+
+                allUsers = data.users || [];
+                allBots = data.bots || [];
+                allPromos = data.promos || [];
+
+                // Overview stats
+                document.getElementById('ov-users').textContent = data.totalUsers;
+                document.getElementById('ov-running').textContent = data.runningBots;
+                document.getElementById('ov-bots').textContent = data.totalBots;
+                document.getElementById('ov-ram').textContent = data.ramMB;
+                document.getElementById('ov-promos').textContent = data.promos?.length || 0;
+                const totalCredits = allUsers.reduce((s, u) => s + (u.credits || 0), 0);
+                document.getElementById('ov-totalcredits').textContent = totalCredits.toLocaleString();
+                document.getElementById('last-refresh').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+
+                const totalRam = data.totalRamMB || 16384;
+                document.getElementById('ram-fill').style.width = Math.min((data.ramMB / totalRam) * 100, 100) + '%';
+                document.getElementById('ram-detail').textContent = `${data.ramMB} / ${totalRam} MB`;
+
+                renderRecentUsers(allUsers.slice(0, 5));
+                renderUsers(allUsers);
+                renderBots(allBots, allUsers);
+                renderPromos(allPromos);
+                renderCredits(allUsers);
+                document.getElementById('user-count-label').textContent = `${allUsers.length} clients registered`;
+            } catch(e) { toast('Failed to load stats', 'error'); }
+        }
+
+        function renderRecentUsers(users) {
+            const el = document.getElementById('ov-recent-users');
+            el.innerHTML = users.map(u => `<tr>
+                <td><strong>${u.name}</strong></td>
+                <td style="color:#58a6ff;">${u.email}</td>
+                <td style="color:#ffbe0b; font-family:'JetBrains Mono'; font-weight:700;">${u.credits || 0}</td>
+                <td>${u.botCount || 0}</td>
+                <td><span class="badge ${u.role === 'admin' ? 'badge-admin' : 'badge-user'}">${u.role.toUpperCase()}</span></td>
+            </tr>`).join('') || '<tr><td colspan="5" style="text-align:center; color:#333;">No users</td></tr>';
+        }
+
+        function renderUsers(users) {
+            const el = document.getElementById('user-list');
+            el.innerHTML = users.map(u => `<tr>
+                <td style="color:#444; font-family:'JetBrains Mono'; font-size:12px;">#${u.id}</td>
+                <td><strong>${u.name}</strong></td>
+                <td style="color:#58a6ff;">${u.email}</td>
+                <td>
+                    <select onchange="changeRole(${u.id}, this.value)" style="background:transparent; border:1px solid rgba(255,255,255,0.08); color:#fff; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:700; outline:none;">
+                        <option value="user" ${u.role === 'user' ? 'selected' : ''}>USER</option>
+                        <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>ADMIN</option>
+                    </select>
+                </td>
+                <td><span style="color:#ffbe0b; font-family:'JetBrains Mono'; font-weight:700;">${u.credits || 0}</span></td>
+                <td>
+                    <button class="btn-ghost-sm" onclick="viewUserBots(${u.id}, '${u.name}')">
+                        ${u.botCount || 0} clusters${u.activeBotCount > 0 ? ` <span class="dot-live"></span>` : ''}
+                    </button>
+                </td>
+                <td>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn-green" onclick="openGift(${u.id}, '${u.name}', ${u.credits || 0})">Gift Credits</button>
+                        <button class="btn-red" onclick="deleteUser(${u.id}, '${u.name}')">Delete</button>
+                    </div>
+                </td>
+            </tr>`).join('') || '<tr><td colspan="7" style="text-align:center; color:#333;">No users found</td></tr>';
+        }
+
+        function filterUsers() {
+            const q = document.getElementById('user-search').value.toLowerCase();
+            const filtered = allUsers.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+            renderUsers(filtered);
+        }
+
+        function renderBots(bots, users) {
+            const el = document.getElementById('bot-list');
+            el.innerHTML = bots.map(b => {
+                const owner = users.find(u => u.id == b.user_id);
+                const isRunning = b.status === 'running';
+                return `<tr>
+                    <td style="color:#444; font-family:'JetBrains Mono'; font-size:12px;">#${b.id}</td>
+                    <td><strong>${b.name}</strong></td>
+                    <td style="color:#58a6ff;">${owner?.name || 'Unknown'}</td>
+                    <td><span class="badge badge-user">${b.language.toUpperCase()}</span></td>
+                    <td><span class="badge ${isRunning ? 'badge-online' : 'badge-offline'}">${isRunning ? 'ONLINE' : 'OFFLINE'}</span></td>
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            ${isRunning ? `<button class="btn-red" onclick="killBotAdmin(${b.id})">Force Kill</button>` : ''}
+                            <button class="btn-ghost-sm" onclick="location.href='/bot-editor.html?id=${b.id}'">Open</button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="6" style="text-align:center; color:#333;">No clusters found</td></tr>';
+        }
+
+        function renderPromos(promos) {
+            const el = document.getElementById('promo-list');
+            el.innerHTML = promos.map(p => `<tr>
+                <td class="mono" style="color:#ffbe0b;">${p.code}</td>
+                <td style="color:#39FF14; font-weight:800;">${p.credits} CR</td>
+                <td>${p.uses}</td>
+                <td>${p.max_uses}</td>
+                <td style="color:#555; font-size:12px;">${new Date(p.created_at).toLocaleDateString()}</td>
+                <td><button class="btn-red" onclick="deletePromo(${p.id}, '${p.code}')">Revoke</button></td>
+            </tr>`).join('') || '<tr><td colspan="6" style="text-align:center; color:#333;">No promo codes</td></tr>';
+        }
+
+        function renderCredits(users) {
+            const el = document.getElementById('credits-list');
+            el.innerHTML = users.map(u => `<tr>
+                <td><strong>${u.name}</strong></td>
+                <td style="color:#58a6ff;">${u.email}</td>
+                <td>
+                    <span style="font-family:'JetBrains Mono'; font-weight:800; font-size:16px; color:#ffbe0b;">${u.credits || 0}</span>
+                    <span style="font-size:11px; color:#444; margin-left:4px;">CR</span>
+                </td>
+                <td>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input class="inp" type="number" placeholder="Amount" style="width:120px; padding:8px 12px;" id="credit-inp-${u.id}">
+                        <button class="btn-green" onclick="quickGift(${u.id})">Gift</button>
+                    </div>
+                </td>
+            </tr>`).join('') || '<tr><td colspan="4" style="text-align:center; color:#333;">No users</td></tr>';
+        }
+
+        function openGift(uid, name, credits) {
+            giftTargetId = uid;
+            document.getElementById('gift-user-name').textContent = name;
+            document.getElementById('gift-user-credits').textContent = credits;
+            document.getElementById('gift-amount').value = '';
+            document.getElementById('gift-modal').classList.add('open');
+        }
+
+        async function submitGift() {
+            const amount = parseInt(document.getElementById('gift-amount').value);
+            if (!amount || isNaN(amount)) { toast('Enter a valid amount', 'error'); return; }
+            const res = await fetch(`/api/admin/users/${giftTargetId}/credits`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ amount }) });
+            const data = await res.json();
+            if (data.success) { toast(`Gifted ${amount} credits. New balance: ${data.newCredits}`); closeModal(); loadStats(); }
+            else toast(data.error, 'error');
+        }
+
+        async function quickGift(uid) {
+            const amount = parseInt(document.getElementById(`credit-inp-${uid}`).value);
+            if (!amount || isNaN(amount)) { toast('Enter a valid amount', 'error'); return; }
+            const res = await fetch(`/api/admin/users/${uid}/credits`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ amount }) });
+            const data = await res.json();
+            if (data.success) { toast(`Gifted ${amount} credits. New balance: ${data.newCredits}`); loadStats(); }
+            else toast(data.error, 'error');
+        }
+
+        async function deleteUser(uid, name) {
+            if (!confirm(`WARNING: Delete client "${name}"?\nThis will destroy ALL their clusters and data permanently.`)) return;
+            const res = await fetch(`/api/admin/users/${uid}`, { method: 'DELETE', headers: HEADERS });
+            const data = await res.json();
+            if (data.success) { toast(`Client ${name} deleted.`); loadStats(); }
+            else toast(data.error, 'error');
+        }
+
+        async function changeRole(uid, role) {
+            const res = await fetch(`/api/admin/users/${uid}/role`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ role }) });
+            const data = await res.json();
+            if (data.success) toast(`Role updated to ${role.toUpperCase()}`);
+            else toast(data.error, 'error');
+        }
+
+        async function killBotAdmin(botId) {
+            if (!confirm('Force terminate this cluster?')) return;
+            const res = await fetch(`/api/admin/bots/${botId}/kill`, { method: 'POST', headers: HEADERS });
+            const data = await res.json();
+            if (data.success) { toast('Cluster terminated.'); loadStats(); }
+            else toast(data.error, 'error');
+        }
+
+        async function viewUserBots(uid, name) {
+            document.getElementById('bots-modal-title').textContent = `${name}'s Clusters`;
+            document.getElementById('bots-modal-body').innerHTML = '<div style="color:#555; padding:20px;">Loading...</div>';
+            document.getElementById('bots-modal').classList.add('open');
+            const res = await fetch(`/api/admin/users/${uid}/bots`, { headers: HEADERS });
+            const bots = await res.json();
+            if (!bots.length) { document.getElementById('bots-modal-body').innerHTML = '<div style="color:#555; padding:20px; text-align:center;">No clusters found.</div>'; return; }
+            document.getElementById('bots-modal-body').innerHTML = bots.map(b => `
+                <div style="padding:16px; border-bottom:1px solid rgba(255,255,255,0.04); display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-weight:800;">${b.name}</div>
+                        <div style="font-size:12px; color:#555; margin-top:3px;">${b.language.toUpperCase()} — ID #${b.id}</div>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span class="badge ${b.running ? 'badge-online' : 'badge-offline'}">${b.running ? 'ONLINE' : 'OFFLINE'}</span>
+                        <button class="btn-ghost-sm" onclick="location.href='/bot-editor.html?id=${b.id}'">Open</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function createPromo() {
+            const code = document.getElementById('promo-code-input').value.trim();
+            const credits = document.getElementById('promo-credits-input').value;
+            const maxUses = document.getElementById('promo-uses-input').value || 1;
+            if (!code || !credits) { toast('Fill in code and credits', 'error'); return; }
+            const res = await fetch('/api/admin/promos', { method: 'POST', headers: HEADERS, body: JSON.stringify({ code, credits, maxUses }) });
+            const data = await res.json();
+            if (data.success) { toast(`Promo code "${code.toUpperCase()}" created!`); document.getElementById('promo-code-input').value=''; loadStats(); }
+            else toast(data.error, 'error');
+        }
+
+        async function deletePromo(id, code) {
+            if (!confirm(`Revoke promo code "${code}"?`)) return;
+            const res = await fetch(`/api/admin/promos/${id}`, { method: 'DELETE', headers: HEADERS });
+            const data = await res.json();
+            if (data.success) { toast(`Code "${code}" revoked.`); loadStats(); }
+            else toast(data.error, 'error');
+        }
+
+        async function purgeInactive() {
+            if (!confirm('Purge all stopped cluster records from all users?')) return;
+            toast('Purge signal sent. Reload to see results.');
+        }
+
+        function calcCost() {
+            const ram = parseFloat(document.getElementById('calc-ram').value) || 238;
+            const cost = Math.ceil(ram * (30/238));
+            document.getElementById('calc-result').textContent = `${cost} Credits`;
+        }
+
+        // Close modals on background click
+        document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', e => { if(e.target === m) closeModal(); }));
+
+        loadStats();
+        setInterval(loadStats, 30000); // Auto-refresh every 30s
+    </script>
+</body>
+</html>

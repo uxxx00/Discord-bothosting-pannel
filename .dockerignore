@@ -1,0 +1,6 @@
+# Hugging Face Spaces Ignore
+node_modules
+__bots__
+.git
+.env
+database.sqlite
